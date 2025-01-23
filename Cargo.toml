@@ -54,3 +54,4 @@ defmt = [
     "embedded-tls?/defmt",
     "nourl/defmt",
 ]
+date = []

@@ -100,3 +100,14 @@ async fn google_panic() {
         Err(e) => panic!("Unexpected error: {e:?}"),
     }
 }
+
+#[cfg(feature="date")]
+#[test]
+fn date_decode() -> Result<(), ()> {
+    use reqwless::headers::HeaderDate;
+    let good_str = &b"Mon, 03 Jul 2024 12:34:56 GMT"[..];
+    let d: HeaderDate = good_str.try_into().expect("Good date");
+    let compare = b"20240703123456";
+    assert!(d.date.unwrap() == *compare, "{:?} Should match {:?}", d.date.unwrap(), *compare);
+    Ok(())
+}

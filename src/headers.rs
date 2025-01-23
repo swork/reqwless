@@ -1,4 +1,5 @@
 /// HTTP content types
+
 #[derive(Debug)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ContentType {
@@ -95,5 +96,81 @@ impl<'a> TryFrom<&'a [u8]> for KeepAlive {
             }
         }
         Ok(keep_alive)
+    }
+}
+
+#[derive(Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+#[cfg(feature="date")]
+pub struct HeaderDate {
+    pub date: Option<[u8;14]>  // b"YYYYMMDDhhmmss" UTC
+}
+
+#[cfg(feature="date")]
+impl<'a> TryFrom<&'a [u8]> for HeaderDate {
+    type Error = ();
+
+    fn try_from(from: &'a [u8]) -> Result<Self, Self::Error> {
+        // Date: <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT
+        let mut candidate: [u8;14] = [b' '; 14];
+        const MONTHS: [&str; 12] = ["Ja", "F", "Mar", "Ap", "May", "Jun", "Jul", "Au", "S", "O", "N", "D"];
+        let val = core::str::from_utf8(from);
+        let val_str: &str;
+        if let Ok(val) = val {
+            val_str = val;
+        } else {
+            return Err(());
+        }
+        let mut byspace = val_str.split(' ');
+        byspace.next(); // skip day-name
+        let day = byspace.next();
+        if let Some(day) = day {
+            if day.len() == 2 {
+                let day = day.as_bytes();
+                candidate[6] = day[0];
+                candidate[7] = day[1];
+            }
+        }
+        let month = byspace.next();
+        if let Some(month) = month {
+            if month.len() == 3 {
+                'mo: for i in 0..=2 {
+                    let prefix = &month[0..=i];
+                    for (mz, m) in MONTHS.iter().enumerate() {
+                        if *m == prefix {
+                            let monthnum = mz + 1;
+                            candidate[4] = (monthnum as u8 / 10) + b'0';
+                            candidate[5] = (monthnum as u8 % 10) + b'0';
+                            break 'mo;
+                        }
+                    }
+                }
+            }
+        }
+        let year = byspace.next();
+        if let Some(year) = year {
+            if year.len() == 4 {
+                let year = year.as_bytes();
+                candidate[0] = year[0];
+                candidate[1] = year[1];
+                candidate[2] = year[2];
+                candidate[3] = year[3];
+            }
+        }
+        let hms = byspace.next();
+        if let Some(hms) = hms {
+            if hms.len() == 8 {
+                let hms = hms.as_bytes();
+                candidate[8] = hms[0];
+                candidate[9] = hms[1];
+                candidate[10] = hms[3];
+                candidate[11] = hms[4];
+                candidate[12] = hms[6];
+                candidate[13] = hms[7];
+            }
+        }
+        Ok(Self {
+            date: Some(candidate),
+        })
     }
 }

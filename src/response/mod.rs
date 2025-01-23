@@ -3,6 +3,8 @@ use embedded_io_async::{BufRead, Read};
 use heapless::Vec;
 
 use crate::headers::{ContentType, KeepAlive, TransferEncoding};
+#[cfg(feature="date")]
+use crate::headers::HeaderDate;
 use crate::reader::BufferingReader;
 use crate::request::Method;
 pub use crate::response::chunked::ChunkedBodyReader;
@@ -28,6 +30,9 @@ where
     pub content_type: Option<ContentType>,
     /// The content length.
     pub content_length: Option<usize>,
+    /// The date, if configured.
+    #[cfg(feature="date")]
+    pub date: Option<HeaderDate>,
     /// The transfer encoding.
     pub transfer_encoding: heapless::Vec<TransferEncoding, 4>,
     /// The keep-alive parameters.
@@ -86,6 +91,8 @@ where
         let mut content_length = None;
         let mut transfer_encoding = Vec::new();
         let mut keep_alive = None;
+        #[cfg(feature="date")]
+        let mut date = None;
 
         for header in response.headers {
             if header.name.eq_ignore_ascii_case("content-type") {
@@ -103,6 +110,9 @@ where
                     .map_err(|_| Error::Codec)?;
             } else if header.name.eq_ignore_ascii_case("keep-alive") {
                 keep_alive.replace(header.value.try_into().map_err(|_| Error::Codec)?);
+            } else if header.name.eq_ignore_ascii_case("date") {
+                #[cfg(feature="date")]
+                date.replace(header.value.try_into().map_err(|_| Error::Codec)?);
             }
         }
 
@@ -132,6 +142,8 @@ where
             status,
             content_type,
             content_length,
+            #[cfg(feature="date")]
+            date,
             transfer_encoding,
             keep_alive,
             header_buf,
