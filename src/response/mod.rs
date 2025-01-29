@@ -625,7 +625,7 @@ mod tests {
 
         match body {
             Error::BufferTooSmall => {}
-            e => panic!("Unexpected error: {e:?}"),
+            e => panic!("Unexpected error: {:?}", e),
         }
     }
 

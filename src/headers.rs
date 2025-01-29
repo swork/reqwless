@@ -1,3 +1,5 @@
+use heapless::Vec;
+
 /// HTTP content types
 
 #[derive(Debug)]
@@ -103,7 +105,7 @@ impl<'a> TryFrom<&'a [u8]> for KeepAlive {
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 #[cfg(feature="date")]
 pub struct HeaderDate {
-    pub date: Option<[u8;14]>  // b"YYYYMMDDhhmmss" UTC
+    pub date: Option<heapless::String<14>>  // "YYYYMMDDhhmmss" UTC, all digits
 }
 
 #[cfg(feature="date")]
@@ -112,7 +114,7 @@ impl<'a> TryFrom<&'a [u8]> for HeaderDate {
 
     fn try_from(from: &'a [u8]) -> Result<Self, Self::Error> {
         // Date: <day-name>, <day> <month> <year> <hour>:<minute>:<second> GMT
-        let mut candidate: [u8;14] = [b' '; 14];
+        let mut candidate: [u8; 14] = *b"              ";
         const MONTHS: [&str; 12] = ["Ja", "F", "Mar", "Ap", "May", "Jun", "Jul", "Au", "S", "O", "N", "D"];
         let val = core::str::from_utf8(from);
         let val_str: &str;
@@ -127,8 +129,7 @@ impl<'a> TryFrom<&'a [u8]> for HeaderDate {
         if let Some(day) = day {
             if day.len() == 2 {
                 let day = day.as_bytes();
-                candidate[6] = day[0];
-                candidate[7] = day[1];
+                candidate[6..=7].copy_from_slice(&day[0..=1]);
             }
         }
         let month = byspace.next();
@@ -169,8 +170,10 @@ impl<'a> TryFrom<&'a [u8]> for HeaderDate {
                 candidate[13] = hms[7];
             }
         }
+        let mut v: heapless::Vec<u8, 14> = Vec::new();
+        let _ = v.extend_from_slice(&candidate[..]);
         Ok(Self {
-            date: Some(candidate),
+            date: Some(heapless::String::from_utf8(v).unwrap()),
         })
     }
 }
